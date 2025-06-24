@@ -78,7 +78,7 @@ async def setrate_command(update, context):
     except:
         await update.message.reply_text("⚠️ Usage: /setrate 105")
 
-app = ApplicationBuilder().token("7844315421:AAHW-zAQJjXRGEr_lItZNeugulELYb8d4").build()
+app = ApplicationBuilder().token("7844315421:AAHW-zAQJjKjXRGEr_lItZNeugulELYb8d4").build()
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
