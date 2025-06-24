@@ -5,17 +5,12 @@ from telegram.ext import (
 )
 import asyncio
 import re
-import requests  # <-- Added for CoinGecko API
+import requests
 
-# Conversation states
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
 def get_rate():
-    """
-    Get the current Pi rate in INR from CoinGecko.
-    Fallback to 100 if API fails.
-    """
     try:
         url = "https://api.coingecko.com/api/v3/simple/price?ids=pi-network&vs_currencies=inr"
         response = requests.get(url, timeout=10)
@@ -25,13 +20,8 @@ def get_rate():
         print("API error:", e)
         return 100
 
-def set_rate(new_rate):
-    # set_rate is now not used, but kept for admin compatibility if needed
-    with open("rate.txt", "w") as f:
-        f.write(str(new_rate))
-
-# ==== START COMMAND ====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()  # Always clear data at start
     if update.effective_user.id == ADMIN_ID:
         keyboard = [
             [
@@ -51,7 +41,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return PI_AMOUNT
 
-# ==== ADMIN CALLBACK HANDLER ====
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -61,12 +50,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("✏️ Please send the new rate:")
         context.user_data["awaiting_rate"] = True
 
-# ==== SET NEW RATE ====
 async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("awaiting_rate") and update.effective_user.id == ADMIN_ID:
         try:
             new_rate = int(update.message.text.strip())
-            set_rate(new_rate)
+            with open("rate.txt", "w") as f:
+                f.write(str(new_rate))
             await update.message.reply_text(f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from CoinGecko!)")
         except Exception:
             await update.message.reply_text("⚠️ Please send a valid number.")
@@ -74,7 +63,6 @@ async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     return ConversationHandler.END
 
-# ==== SELL FLOW ====
 async def pi_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         pi = float(update.message.text.strip())
@@ -112,12 +100,9 @@ async def get_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
-    # 1. User sees instruction
     await update.message.reply_text("Send Pi token to this address")
-    # 2. Send QR
     with open("wallet_qr.png", "rb") as qr:
         await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-    # 3. Send wallet address in code block
     await update.message.reply_text(
         "✂️ Touch and copy this address:\n"
         "`MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G`",
@@ -154,7 +139,6 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversion = gross * 0.01
     net = gross - tax - processing - conversion
 
-    # Only one consolidated message to admin:
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
@@ -177,10 +161,8 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-    # 3. Thank You message for seller
     await update.message.reply_text("📩 Thanks! Admin will verify and send payment.")
 
-    # 4. Sell Pi Again button for seller
     keyboard = [
         [InlineKeyboardButton("🔄 Sell Pi Again", callback_data="sellpi_again")]
     ]
@@ -194,14 +176,13 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    context.user_data.clear()  # <--- Yeh line add kar di hai!
+    context.user_data.clear()  # ESSENTIAL: clear old data!
     rate = get_rate()
     await query.message.reply_text(
         f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: ₹{rate}/PI\n\nHow many PI would you like to sell?"
     )
     return PI_AMOUNT
 
-# ==== BUILD APP ====
 app = ApplicationBuilder().token("7844315421:AAHAhynkSnFnw8I-mYvHZkFeBaVYVqTnxT4").build()
 
 conv = ConversationHandler(
@@ -222,6 +203,5 @@ app.add_handler(conv)
 app.add_handler(CallbackQueryHandler(button_handler))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_new_rate))
 
-# ==== RUN BOT ====
 if __name__ == "__main__":
     asyncio.run(app.run_polling())
