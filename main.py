@@ -103,15 +103,18 @@ async def get_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
-    # Send QR first
+    # 1. First, tell user to send Pi token to the address
+    await update.message.reply_text("Send Pi token to this address")
+    # 2. Then send QR
     with open("wallet_qr.png", "rb") as qr:
         await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-    # Send wallet address in code block
+    # 3. Then send wallet address in code block
     await update.message.reply_text(
         "✂️ Touch and copy this address:\n"
         "`MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G`",
         parse_mode="Markdown"
     )
+    # 4. Continue the flow
     await update.message.reply_text("📤 Paste the Pi transaction link:")
     return TXN_LINK
 
