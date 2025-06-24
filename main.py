@@ -5,19 +5,28 @@ from telegram.ext import (
 )
 import asyncio
 import re
+import requests  # <-- Added for CoinGecko API
 
 # Conversation states
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
 def get_rate():
+    """
+    Get the current Pi rate in INR from CoinGecko.
+    Fallback to 100 if API fails.
+    """
     try:
-        with open("rate.txt", "r") as f:
-            return int(f.read().strip())
-    except Exception:
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=pi-network&vs_currencies=inr"
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        return data["pi-network"]["inr"]
+    except Exception as e:
+        print("API error:", e)
         return 100
 
 def set_rate(new_rate):
+    # set_rate is now not used, but kept for admin compatibility if needed
     with open("rate.txt", "w") as f:
         f.write(str(new_rate))
 
@@ -58,7 +67,7 @@ async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             new_rate = int(update.message.text.strip())
             set_rate(new_rate)
-            await update.message.reply_text(f"✅ Rate updated to ₹{new_rate}/PI")
+            await update.message.reply_text(f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from CoinGecko!)")
         except Exception:
             await update.message.reply_text("⚠️ Please send a valid number.")
         context.user_data["awaiting_rate"] = False
