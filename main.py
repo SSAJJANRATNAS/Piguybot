@@ -103,18 +103,17 @@ async def get_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
-    # 1. First, tell user to send Pi token to the address
+    # 1. User sees instruction
     await update.message.reply_text("Send Pi token to this address")
-    # 2. Then send QR
+    # 2. Send QR
     with open("wallet_qr.png", "rb") as qr:
         await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-    # 3. Then send wallet address in code block
+    # 3. Send wallet address in code block
     await update.message.reply_text(
         "✂️ Touch and copy this address:\n"
         "`MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G`",
         parse_mode="Markdown"
     )
-    # 4. Continue the flow
     await update.message.reply_text("📤 Paste the Pi transaction link:")
     return TXN_LINK
 
@@ -146,7 +145,7 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversion = gross * 0.01
     net = gross - tax - processing - conversion
 
-    # Send main sell request to admin
+    # 1. Overview (for admin)
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
@@ -168,15 +167,36 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         parse_mode="Markdown"
     )
-    # Send final payable alone for easy copy
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=f"💸 Final Payable (tap & hold to copy):\n`₹{net:.2f}`",
-        parse_mode="Markdown"
-    )
+    # 2. Send each field for one-touch copy
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"👤 Full Name:\n`{context.user_data['full_name']}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🆔 PAN:\n`{context.user_data['pan']}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"📱 Phone:\n`{context.user_data['phone']}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"👤 Telegram:\n`@{user.username or '-'} (ID: {user.id})`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"💰 PI Amount:\n`{pi}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"💵 Gross:\n`₹{gross:.2f}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"💸 Final Payable:\n`₹{net:.2f}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🌍 Wallet:\n`{context.user_data['wallet']}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔗 Transaction:\n`{context.user_data['txn_link']}`", parse_mode="Markdown")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"📥 UPI:\n`{context.user_data['upi']}`", parse_mode="Markdown")
 
+    # 3. Thank You message for seller
     await update.message.reply_text("📩 Thanks! Admin will verify and send payment.")
+
+    # 4. Sell Pi Again button for seller
+    keyboard = [
+        [InlineKeyboardButton("🔄 Sell Pi Again", callback_data="sellpi_again")]
+    ]
+    await update.message.reply_text(
+        "Do you want to sell more Pi?",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
     return ConversationHandler.END
+
+# ==== SELL AGAIN HANDLER ====
+async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    return await start(update, context)
 
 # ==== BUILD APP ====
 app = ApplicationBuilder().token("7844315421:AAHAhynkSnFnw8I-mYvHZkFeBaVYVqTnxT4").build()
@@ -185,8 +205,7 @@ conv = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
         PI_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, pi_amount)],
-        FULL_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_full_name)],
-        PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
+        FULL_NAME: [MessageHandler(filters.TEXT & ~filters, get_phone)],
         PAN: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_pan)],
         WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_wallet)],
         TXN_LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_txn_link)],
@@ -198,6 +217,7 @@ conv = ConversationHandler(
 app.add_handler(conv)
 app.add_handler(CallbackQueryHandler(button_handler))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_new_rate))
+app.add_handler(CallbackQueryHandler(sellpi_again_handler, pattern="^sellpi_again$"))
 
 # ==== RUN BOT ====
 if __name__ == "__main__":
