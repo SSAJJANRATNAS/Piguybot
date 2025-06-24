@@ -26,9 +26,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🛠 Admin Panel", reply_markup=markup)
         return ConversationHandler.END
     rate = get_rate()
-    await update.message.reply_text(f"👋 Welcome to Pi-Guy Bot!
+    await update.message.reply_text(f"""👋 Welcome to Pi-Guy Bot!
 Current rate: ₹{rate}/PI
-How many PI would you like to sell?")
+How many PI would you like to sell?""")
     return PI_AMOUNT
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
