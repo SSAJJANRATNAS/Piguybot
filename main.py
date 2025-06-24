@@ -103,23 +103,17 @@ async def get_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
-    await update.message.reply_text(
-   "📷 Scan this QR to send:",
-    parse_mode="Markdown"
-)
-
-async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Send QR first
     with open("wallet_qr.png", "rb") as qr:
         await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-
-await update.message.reply_text(
-    "✂️ Touch and copy this address:\n"
-    "`MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G`",
-    parse_mode="Markdown"
-)
-
-await update.message.reply_text("📤 Paste the Pi transaction link:")
-return TXN_LINK
+    # Send wallet address in code block
+    await update.message.reply_text(
+        "✂️ Touch and copy this address:\n"
+        "`MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G`",
+        parse_mode="Markdown"
+    )
+    await update.message.reply_text("📤 Paste the Pi transaction link:")
+    return TXN_LINK
 
 async def get_txn_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link = update.message.text.strip()
@@ -149,6 +143,7 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversion = gross * 0.01
     net = gross - tax - processing - conversion
 
+    # Send main sell request to admin
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
@@ -168,6 +163,12 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔗 *Transaction:*\n{context.user_data['txn_link']}\n"
             f"📥 *UPI:* `{context.user_data['upi']}`"
         ),
+        parse_mode="Markdown"
+    )
+    # Send final payable alone for easy copy
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=f"💸 Final Payable (tap & hold to copy):\n`₹{net:.2f}`",
         parse_mode="Markdown"
     )
 
