@@ -6,7 +6,12 @@ from telegram.ext import (
 
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
-def get_rate(): try: with open("rate.txt", "r") as f: return int(f.read().strip()) except: return 100
+def get_rate():
+    try:
+        with open("rate.txt", "r") as f:
+            return int(f.read().strip())
+    except:
+        return 100
 
 def set_rate(new_rate): with open("rate.txt", "w") as f: f.write(str(new_rate))
 
