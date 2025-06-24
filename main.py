@@ -16,12 +16,11 @@ def get_rate():
         response = requests.get(url, timeout=10)
         data = response.json()
         return data["pi-network"]["inr"]
-    except Exception as e:
-        print("API error:", e)
+    except Exception:
         return 100
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.clear()  # Always clear data at start
+    context.user_data.clear()  # Fresh start for every /start or sell again
     if update.effective_user.id == ADMIN_ID:
         keyboard = [
             [
@@ -174,14 +173,16 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==== SELL AGAIN HANDLER ====
 async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Simulate /start command as if user typed it
+    context.user_data.clear()
     query = update.callback_query
     await query.answer()
-    context.user_data.clear()  # ESSENTIAL: clear old data!
-    rate = get_rate()
-    await query.message.reply_text(
-        f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: ₹{rate}/PI\n\nHow many PI would you like to sell?"
+    # Make a fake Message object for start()
+    fake_update = Update(
+        update.update_id,
+        message=query.message
     )
-    return PI_AMOUNT
+    return await start(fake_update, context)
 
 app = ApplicationBuilder().token("7844315421:AAHAhynkSnFnw8I-mYvHZkFeBaVYVqTnxT4").build()
 
