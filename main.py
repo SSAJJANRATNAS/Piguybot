@@ -104,7 +104,7 @@ async def get_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
     await update.message.reply_text(
-    "📷 Scan this QR to send:",
+   "📷 Scan this QR to send:",
     parse_mode="Markdown"
 )
 
