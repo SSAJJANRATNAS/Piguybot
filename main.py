@@ -20,7 +20,7 @@ def get_rate():
         return 100
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.clear()  # Fresh start for every /start or sell again
+    context.user_data.clear()
     if update.effective_user.id == ADMIN_ID:
         keyboard = [
             [
@@ -163,26 +163,25 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📩 Thanks! Admin will verify and send payment.")
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Sell Pi Again", callback_data="sellpi_again")]
+        [InlineKeyboardButton("🔄 Sell Pi Again", callback_data="sellpi_again")],
+        [InlineKeyboardButton("▶️ Start", switch_inline_query_current_chat="/start")]
     ]
     await update.message.reply_text(
-        "Do you want to sell more Pi?",
+        "To sell Pi again, type /start or press the Start button below.",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     return ConversationHandler.END
 
-# ==== SELL AGAIN HANDLER ====
 async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Simulate /start command as if user typed it
-    context.user_data.clear()
     query = update.callback_query
     await query.answer()
-    # Make a fake Message object for start()
-    fake_update = Update(
-        update.update_id,
-        message=query.message
+    await query.message.reply_text(
+        "To sell Pi again, type /start or press the Start button below.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("▶️ Start", switch_inline_query_current_chat="/start")]
+        ])
     )
-    return await start(fake_update, context)
+    return ConversationHandler.END
 
 app = ApplicationBuilder().token("7844315421:AAHAhynkSnFnw8I-mYvHZkFeBaVYVqTnxT4").build()
 
