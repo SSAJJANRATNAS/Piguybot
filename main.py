@@ -145,7 +145,7 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversion = gross * 0.01
     net = gross - tax - processing - conversion
 
-    # 1. Overview (for admin)
+    # Only one consolidated message to admin:
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
@@ -167,17 +167,6 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         parse_mode="Markdown"
     )
-    # 2. Send each field for one-touch copy
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"👤 Full Name:\n`{context.user_data['full_name']}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🆔 PAN:\n`{context.user_data['pan']}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"📱 Phone:\n`{context.user_data['phone']}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"👤 Telegram:\n`@{user.username or '-'} (ID: {user.id})`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"💰 PI Amount:\n`{pi}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"💵 Gross:\n`₹{gross:.2f}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"💸 Final Payable:\n`₹{net:.2f}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🌍 Wallet:\n`{context.user_data['wallet']}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔗 Transaction:\n`{context.user_data['txn_link']}`", parse_mode="Markdown")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"📥 UPI:\n`{context.user_data['upi']}`", parse_mode="Markdown")
 
     # 3. Thank You message for seller
     await update.message.reply_text("📩 Thanks! Admin will verify and send payment.")
