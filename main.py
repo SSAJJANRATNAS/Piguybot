@@ -242,17 +242,18 @@ conv = ConversationHandler(
         WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_wallet)],
         TXN_LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_txn_link)],
         UPI: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_upi)],
+        ConversationHandler.TIMEOUT: [MessageHandler(filters.ALL, timeout_handler)],
     },
     fallbacks=[CallbackQueryHandler(sellpi_again_handler, pattern="^sellpi_again$")],
     conversation_timeout=300
 )
 
-app = ApplicationBuilder().token("7844315421:AAHAhynkSnFnw8I-mYvHZkFeBaVYVqTnxT4").build()
+app = ApplicationBuilder().token("YOUR-BOT-TOKEN").build()
 
 app.add_handler(conv)
 app.add_handler(CallbackQueryHandler(button_handler))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_new_rate))
-app.add_handler(MessageHandler(filters.StatusUpdate.TIMEOUT, timeout_handler))
+#     ^^^^ Yahan se filters.StatusUpdate.TIMEOUT hata dein
 
 if __name__ == "__main__":
     asyncio.run(app.run_polling())
