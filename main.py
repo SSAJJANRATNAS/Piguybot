@@ -163,11 +163,10 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📩 Thanks! Admin will verify and send payment.")
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Sell Pi Again", callback_data="sellpi_again")],
-        [InlineKeyboardButton("▶️ Start", switch_inline_query_current_chat="/start")]
+        [InlineKeyboardButton("🔄 Sell Pi Again", callback_data="sellpi_again")]
     ]
     await update.message.reply_text(
-        "To sell Pi again, type /start or press the Start button below.",
+        "To sell Pi again, type /start.",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     return ConversationHandler.END
@@ -176,10 +175,7 @@ async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        "To sell Pi again, type /start or press the Start button below.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("▶️ Start", switch_inline_query_current_chat="/start")]
-        ])
+        "To sell Pi again, touch on blue part /start."
     )
     return ConversationHandler.END
 
