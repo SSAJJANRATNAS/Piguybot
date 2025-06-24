@@ -138,25 +138,24 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversion = gross * 0.01
     net = gross - tax - processing - conversion
 
-    await context.bot.send_message(chat_id=ADMIN_ID, text=
-        f"🧾 *New Pi Sell Request*\\n\\n"
-        f"👤 *Full Name:* `{context.user_data['full_name']}`\\n"
-        f"🆔 *PAN:* `{context.user_data['pan']}`\\n"
-        f"📱 *Phone:* `{context.user_data['phone']}`\\n"
-        f"👤 *Telegram:* @{user.username} (ID: {user.id})\\n\\n"
-        f"💰 *PI Amount:* {pi}\\n"
-        f"💵 *Gross:* ₹{gross:.2f}\\n"
-        f"📉 *Deductions:*\\n"
-        f"• ₹{tax:.2f} Govt Tax (30%)\\n"
-        f"• ₹{processing:.2f} Processing Fee (1%)\\n"
-        f"• ₹{conversion:.2f} Conversion Fee (1%)\\n\\n"
-        f"💸 *Final Payable:* ₹{net:.2f}\\n\\n"
-        f"🪙 *Wallet:* `{context.user_data['wallet']}`\\n"
-        f"🔗 *Transaction:*\\n{context.user_data['txn_link']}\\n"
-        f"📥 *UPI:* `{context.user_data['upi']}`",
-        parse_mode="Markdown"
-    )
-
+await context.bot.send_message(chat_id=ADMIN_ID, text=
+    f"🧾 *New Pi Sell Request*\n\n"
+    f"👤 *Full Name:* `{context.user_data['full_name']}`\n"
+    f"🆔 *PAN:* `{context.user_data['pan']}`\n"
+    f"📱 *Phone:* `{context.user_data['phone']}`\n"
+    f"👤 *Telegram:* @{user.username} (ID: {user.id})\n\n"
+    f"💰 *PI Amount:* {pi} (₹{gross:.2f})\n"
+    f"💵 *Gross:* ₹{gross:.2f}\n"
+    f"📉 *Deductions:*\n"
+    f"• ₹{tax:.2f} Govt Tax (30%)\n"
+    f"• ₹{processing:.2f} Processing Fee (1%)\n"
+    f"• ₹{conversion:.2f} Conversion Fee (1%)\n\n"
+    f"💸 *Final Payable:* ₹{net:.2f}\n\n"
+    f"🌍 *Wallet:* `{context.user_data['wallet']}`\n"
+    f"🔗 *Transaction:*\n{context.user_data['txn_link']}\n"
+    f"📥 *UPI:* `{context.user_data['upi']}`",
+    parse_mode="Markdown"
+)
     await update.message.reply_text("📩 Thanks! Admin will verify and send payment.")
     return ConversationHandler.END
 
