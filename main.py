@@ -105,7 +105,7 @@ async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
     await update.message.reply_text(
         f"""✅ Please send {context.user_data['pi']} PI to the wallet below:
-✂️ Tap and copy this address: MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G
+✂️ Tap and copy this address: `MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32Gf`"
 
 📷 Scan this QR to send:""",
         parse_mode="Markdown"
@@ -157,7 +157,7 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• ₹{tax:.2f} Govt Tax (30%)\n"
             f"• ₹{processing:.2f} Processing Fee (1%)\n"
             f"• ₹{conversion:.2f} Conversion Fee (1%)\n\n"
-            f"💸 *Final Payable:* ₹{net:.2f}\n\n"
+            f"💸 *Final Payable:* `₹{net:.2f}`\n\n"
             f"🌍 *Wallet:* `{context.user_data['wallet']}`\n"
             f"🔗 *Transaction:*\n{context.user_data['txn_link']}\n"
             f"📥 *UPI:* `{context.user_data['upi']}`"
