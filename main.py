@@ -194,6 +194,7 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    context.user_data.clear()  # <--- Yeh line add kar di hai!
     rate = get_rate()
     await query.message.reply_text(
         f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: ₹{rate}/PI\n\nHow many PI would you like to sell?"
