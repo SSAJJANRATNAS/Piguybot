@@ -205,8 +205,7 @@ conv = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
         PI_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, pi_amount)],
-        FULL_NAME: [MessageHandler(filters.TEXT & ~filters, get_phone)],
-        PAN: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_pan)],
+        FULL_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_full_name)],(filters.TEXT & ~filters.COMMAND, get_pan)],
         WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_wallet)],
         TXN_LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_txn_link)],
         UPI: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_upi)],
