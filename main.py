@@ -104,16 +104,21 @@ async def get_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
     await update.message.reply_text(
-        f"""✅ Please send {context.user_data['pi']} PI to the wallet below:
-📷 Scan this QR to send:""",
-        parse_mode="Markdown"
-    )
-    with open("wallet_qr.png", "rb") as qr:
-        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-await update.message.reply_text("Or")
-await update.message.reply_text("✂️ Touch and copy this address: `MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32Gf`")
-    await update.message.reply_text("📤 Paste the Pi transaction link:")
-    return TXN_LINK
+    "📷 Scan this QR to send:",
+    parse_mode="Markdown"
+)
+
+with open("wallet_qr.png", "rb") as qr:
+    await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
+
+await update.message.reply_text(
+    "✂️ Touch and copy this address:\n"
+    "`MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G`",
+    parse_mode="Markdown"
+)
+
+await update.message.reply_text("📤 Paste the Pi transaction link:")
+return TXN_LINK
 
 async def get_txn_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link = update.message.text.strip()
