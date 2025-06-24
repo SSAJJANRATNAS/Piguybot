@@ -185,7 +185,11 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def sellpi_again_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    return await start(update, context)
+    rate = get_rate()
+    await query.message.reply_text(
+        f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: ₹{rate}/PI\n\nHow many PI would you like to sell?"
+    )
+    return PI_AMOUNT
 
 # ==== BUILD APP ====
 app = ApplicationBuilder().token("7844315421:AAHAhynkSnFnw8I-mYvHZkFeBaVYVqTnxT4").build()
@@ -201,13 +205,12 @@ conv = ConversationHandler(
         TXN_LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_txn_link)],
         UPI: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_upi)],
     },
-    fallbacks=[]
+    fallbacks=[CallbackQueryHandler(sellpi_again_handler, pattern="^sellpi_again$")]
 )
 
 app.add_handler(conv)
 app.add_handler(CallbackQueryHandler(button_handler))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_new_rate))
-app.add_handler(CallbackQueryHandler(sellpi_again_handler, pattern="^sellpi_again$"))
 
 # ==== RUN BOT ====
 if __name__ == "__main__":
