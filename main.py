@@ -109,7 +109,9 @@ async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 )
 
 with open("wallet_qr.png", "rb") as qr:
-    await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
+    async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with open("wallet_qr.png", "rb") as qr:
+        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
 
 await update.message.reply_text(
     "✂️ Touch and copy this address:\n"
