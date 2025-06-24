@@ -108,8 +108,7 @@ async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parse_mode="Markdown"
 )
 
-with open("wallet_qr.png", "rb") as qr:
-    async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with open("wallet_qr.png", "rb") as qr:
         await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
 
