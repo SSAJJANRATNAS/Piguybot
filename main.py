@@ -39,7 +39,7 @@ async def pi_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['wallet'] = update.message.text.strip()
     await update.message.reply_text(
-        f"✅ Kripya {context.user_data['pi']} PI bhejiye is wallet par:\n👉 @YourPiWallet\n\nPI bhejne ke baad, kripya Transaction ID bhejiye."
+        f"✅ Kripya {context.user_data['pi']} PI bhejiye is wallet par:\n👉 @MD5HGPHVL73EBDUD2Z4K2VDRLUBC4FFN7GOBLKPK6OPPXH6TED4TQAAAAGKTDJBVUS32G\n\nPI bhejne ke baad, kripya Transaction ID bhejiye."
     )
     return TXN
 
