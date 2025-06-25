@@ -7,47 +7,37 @@ from telegram.ext import (
 import asyncio
 import re
 import requests
-from bs4 import BeautifulSoup  # For scraping Coinbase
+from bs4 import BeautifulSoup
 
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
 def get_rate():
-    # 1. Try to fetch from Coinbase (scraping)
+    # 1. Get PI price in USD from MEXC
     try:
-        url = "https://www.coinbase.com/en-in/price/pi"
+        url = "https://www.mexc.co/en-IN/price/PI"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, "html.parser")
-            # Find INR price by pattern
-            price_element = soup.find("div", string=re.compile(r"^₹[\d,]+\.\d{2}$"))
+            # MEXC USD price is in <span class="price"> (example: $37.12)
+            price_element = soup.find("span", {"class": "price"})
             if price_element:
-                price_text = price_element.text.strip().replace("₹", "").replace(",", "")
-                price = float(price_text)
-                if price > 0:
-                    return price
-            # Fallback: try any element matching the rupee pattern
-            candidate = soup.find(string=re.compile(r"^₹[\d,]+\.\d{2}$"))
-            if candidate:
-                price_text = candidate.strip().replace("₹", "").replace(",", "")
-                price = float(price_text)
-                if price > 0:
-                    return price
-    except Exception:
-        pass
-
-    # 2. Try CoinGecko as fallback
-    try:
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=pi-network&vs_currencies=inr"
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        rate = data["pi-network"]["inr"]
-        if rate and rate > 0:
-            return rate
-    except Exception:
-        pass
-
-    # 3. If both fail, return None (NO default)
+                price_text = price_element.text.strip()
+                price_text = price_text.replace("$", "").replace(",", "")
+                pi_usd = float(price_text)
+                if pi_usd > 0:
+                    # 2. Get USD-INR conversion rate
+                    try:
+                        fx = requests.get("https://api.exchangerate.host/latest?base=USD&symbols=INR", timeout=10)
+                        fx_json = fx.json()
+                        usd_inr = fx_json["rates"]["INR"]
+                        if usd_inr > 0:
+                            pi_inr = pi_usd * usd_inr
+                            return round(pi_inr, 2)
+                    except Exception:
+                        return None
+    except Exception as e:
+        print("Error fetching price from MEXC:", e)
     return None
 
 # Helper to send timer update
@@ -94,7 +84,6 @@ async def timer_reminder(context: ContextTypes.DEFAULT_TYPE, chat_id):
         now = asyncio.get_event_loop().time()
         await asyncio.sleep(sec - (now - start_time))
         await send_timer_update(context, chat_id, sec)
-    # No need to send 0:00 left (timeout handler will do final message)
 
 def cancel_timer_task(context: ContextTypes.DEFAULT_TYPE):
     task = context.user_data.get('timer_task')
@@ -122,7 +111,7 @@ async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with open("rate.txt", "w") as f:
                 f.write(str(new_rate))
             await update.message.reply_text(
-                f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from Coinbase/CoinGecko!)"
+                f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from MEXC only!)"
             )
         except Exception:
             await update.message.reply_text("⚠️ Please send a valid number.")
@@ -296,7 +285,6 @@ conv = ConversationHandler(
     conversation_timeout=300
 )
 
-# --- TOKEN ENVIRONMENT VARIABLE USAGE ---
 TOKEN = os.environ.get("BOT_TOKEN")
 app = ApplicationBuilder().token(TOKEN).build()
 
