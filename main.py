@@ -1,4 +1,9 @@
-import os, re, asyncio, time, random, string
+import os
+import re
+import asyncio
+import time
+import random
+import string
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup
 )
@@ -7,15 +12,16 @@ from telegram.ext import (
     filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 )
 
+# === CONFIGURATION ===
 ADMIN_ID = 5795065284  # Change to your Telegram user ID
 RATE_FILE = "rate.txt"
 ADMIN_UPI_ID = "sajjanrohdiya@ybl"  # Change to your UPI ID
-ADMIN_QR_PATH = "admin_qr.png"
+ADMIN_QR_PATH = "admin_qr.png"  # Path to your QR image
 
 # Sell Pi states
 SELL_AMOUNT, SELL_NAME, SELL_PHONE, SELL_PAN, SELL_WALLET, SELL_PI_TXN, SELL_UPI = range(7)
 # Buy Pi states
-BUY_AMOUNT, BUY_NAME, BUY_PHONE, BUY_PAN, BUY_WALLET, BUY_PAYMENT_INFO, BUY_UPI_TXN = range(7, 14)
+BUY_AMOUNT, BUY_NAME, BUY_PHONE, BUY_PAN, BUY_WALLET_ADDRESS, BUY_UPI_TXN = range(7, 13)
 
 # Memory store for pending requests: txn_id -> {user_id, type, ...}
 pending_transactions = {}
@@ -261,21 +267,37 @@ async def buy_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Invalid PAN format. Please enter again:")
         return BUY_PAN
     context.user_data['buy_pan'] = pan
-    await update.message.reply_text("🌍 Please enter your Pi wallet username (e.g., @piuser):")
-    return BUY_WALLET
-
-async def buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['buy_wallet'] = update.message.text.strip()
     await update.message.reply_text(
-        f"💸 Please pay to the admin's UPI ID below:\n\n"
+        "🌍 Please enter your Pi wallet address (should look like: GAP6UFB27DCORJA7LTGCCVVM2CD5VJJIHDRS34PIYUZNN663IDAEGNPL):"
+    )
+    return BUY_WALLET_ADDRESS
+
+async def buy_wallet_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    address = update.message.text.strip()
+    if not re.fullmatch(r"[A-Z2-7]{56}", address):
+        await update.message.reply_text(
+            "⚠️ Invalid Pi wallet address. Please enter again (should look like: GAP6UFB27DCORJA7LTGCCVVM2CD5VJJIHDRS34PIYUZNN663IDAEGNPL):"
+        )
+        return BUY_WALLET_ADDRESS
+    context.user_data['buy_wallet_address'] = address
+    pi = context.user_data['buy_pi']
+    buy_rate = get_buy_rate()
+    total = pi * buy_rate
+    await update.message.reply_text(
+        f"💸 Please pay ₹{total} to the admin's UPI ID below:\n\n"
         f"`{ADMIN_UPI_ID}`\n\n"
-        "Or scan the below QR code to pay:",
+        "Or scan the QR code below to pay:",
         parse_mode="Markdown"
     )
+    # QR send logic
     if os.path.exists(ADMIN_QR_PATH):
         with open(ADMIN_QR_PATH, "rb") as qr:
             await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-    await update.message.reply_text("✅ After making payment, please enter your UPI Transaction ID (e.g., T2506250623580878760817):")
+    else:
+        await update.message.reply_text("⚠️ QR code image not found. Please contact admin.")
+    await update.message.reply_text(
+        "✅ After making payment, please enter your UPI Transaction ID (e.g., T2506250623580878760817):"
+    )
     return BUY_UPI_TXN
 
 async def buy_upi_txn(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -300,7 +322,7 @@ async def buy_upi_txn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "name": context.user_data['buy_name'],
         "phone": context.user_data['buy_phone'],
         "pan": context.user_data['buy_pan'],
-        "wallet": context.user_data['buy_wallet'],
+        "wallet_address": context.user_data['buy_wallet_address'],
         "upi_txn_id": context.user_data['buy_upi_txn']
     }
 
@@ -313,7 +335,7 @@ async def buy_upi_txn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👤 *Telegram:* @{user.username or '-'} (ID: {user.id})\n\n"
         f"🪙 *PI Amount:* {pi} (₹{total:.2f})\n"
         f"💰 *Total Payment:* ₹{total:.2f} (at ₹{buy_rate}/Pi)\n"
-        f"🌍 *Wallet:* `{context.user_data['buy_wallet']}`\n"
+        f"🌍 *Wallet Address:* `{context.user_data['buy_wallet_address']}`\n"
         f"💸 *User UPI Txn ID:* `{context.user_data['buy_upi_txn']}`"
     )
     keyboard = InlineKeyboardMarkup([
@@ -392,7 +414,7 @@ conv = ConversationHandler(
         BUY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, buy_name)],
         BUY_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, buy_phone)],
         BUY_PAN: [MessageHandler(filters.TEXT & ~filters.COMMAND, buy_pan)],
-        BUY_WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, buy_wallet)],
+        BUY_WALLET_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, buy_wallet_address)],
         BUY_UPI_TXN: [MessageHandler(filters.TEXT & ~filters.COMMAND, buy_upi_txn)],
     },
     fallbacks=[],
