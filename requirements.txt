@@ -3,3 +3,5 @@ requests
 python-dotenv
 aiohttp
 beautifulsoup4
+qrcode[pil]
+Pillow
