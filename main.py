@@ -20,7 +20,6 @@ ADMIN_ID = 5795065284  # Change to your Telegram user ID
 RATE_FILE = "rate.txt"
 ADMIN_UPI_ID = "sajjanrohdiya@ybl"  # Change to your UPI ID
 ADMIN_UPI_NAME = "SAJJAN  SINGH S/O KISHAN SINGH"  # Your UPI name for QR
-# You don't need QR image path now
 
 # Sell Pi states
 SELL_AMOUNT, SELL_NAME, SELL_PHONE, SELL_PAN, SELL_WALLET, SELL_PI_TXN, SELL_UPI = range(7)
