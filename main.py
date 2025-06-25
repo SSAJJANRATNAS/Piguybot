@@ -12,11 +12,15 @@ from telegram.ext import (
     filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 )
 
+import qrcode
+from io import BytesIO
+
 # === CONFIGURATION ===
 ADMIN_ID = 5795065284  # Change to your Telegram user ID
 RATE_FILE = "rate.txt"
 ADMIN_UPI_ID = "sajjanrohdiya@ybl"  # Change to your UPI ID
-ADMIN_QR_PATH = "admin_qr.png"  # Path to your QR image
+ADMIN_UPI_NAME = "SAJJAN  SINGH S/O KISHAN SINGH"  # Your UPI name for QR
+# You don't need QR image path now
 
 # Sell Pi states
 SELL_AMOUNT, SELL_NAME, SELL_PHONE, SELL_PAN, SELL_WALLET, SELL_PI_TXN, SELL_UPI = range(7)
@@ -46,6 +50,29 @@ def generate_txn_id(user_id):
     uid = str(user_id)[-4:]
     randpart = ''.join(random.choices(string.ascii_uppercase + string.digits, k=2))
     return f"PI{ts}{uid}{randpart}"
+
+# ---------- QR CODE FUNCTION ----------
+async def send_upi_qr(context, chat_id, upi_id, name, amount, txnid):
+    upi_link = (
+        f"upi://pay?pa={upi_id}"
+        f"&pn={name.replace(' ', '%20')}"
+        f"&tr={txnid}"
+        f"&mc=0000"
+        f"&am={amount}"
+        f"&mam={amount}"
+        f"&cu=INR"
+        f"&tn=Pay"
+    )
+    qr_img = qrcode.make(upi_link)
+    bio = BytesIO()
+    bio.name = 'upi_qr.png'
+    qr_img.save(bio, 'PNG')
+    bio.seek(0)
+    await context.bot.send_photo(
+        chat_id=chat_id,
+        photo=bio,
+        caption=f"Scan this QR to pay ₹{amount}\n\n{upi_link}"
+    )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
@@ -282,19 +309,20 @@ async def buy_wallet_address(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data['buy_wallet_address'] = address
     pi = context.user_data['buy_pi']
     buy_rate = get_buy_rate()
-    total = pi * buy_rate
-    await update.message.reply_text(
-        f"💸 Please pay ₹{total} to the admin's UPI ID below:\n\n"
-        f"`{ADMIN_UPI_ID}`\n\n"
-        "Or scan the QR code below to pay:",
-        parse_mode="Markdown"
+    total = round(pi * buy_rate, 2)  # Always round for display & payment
+    txn_id = generate_txn_id(update.effective_user.id)
+    context.user_data['transaction_id'] = txn_id
+
+    # ---------- Send dynamic QR to buyer ----------
+    await send_upi_qr(
+        context,
+        update.effective_chat.id,
+        ADMIN_UPI_ID,
+        ADMIN_UPI_NAME,
+        total,
+        txn_id
     )
-    # QR send logic
-    if os.path.exists(ADMIN_QR_PATH):
-        with open(ADMIN_QR_PATH, "rb") as qr:
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=qr)
-    else:
-        await update.message.reply_text("⚠️ QR code image not found. Please contact admin.")
+
     await update.message.reply_text(
         "✅ After making payment, please enter your UPI Transaction ID (e.g., T2506250623580878760817):"
     )
@@ -307,12 +335,11 @@ async def buy_upi_txn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return BUY_UPI_TXN
     context.user_data['buy_upi_txn'] = txn_id
     user = update.effective_user
-    my_txn_id = generate_txn_id(user.id)
-    context.user_data['transaction_id'] = my_txn_id
+    my_txn_id = context.user_data.get('transaction_id') or generate_txn_id(user.id)
 
     pi = context.user_data['buy_pi']
     buy_rate = get_buy_rate()
-    total = pi * buy_rate
+    total = round(pi * buy_rate, 2)
 
     # Save in pending_transactions
     pending_transactions[my_txn_id] = {
