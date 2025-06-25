@@ -7,32 +7,32 @@ from telegram.ext import (
 import asyncio
 import re
 import requests
-from bs4 import BeautifulSoup  # NEW: For Coinbase scraping
+from bs4 import BeautifulSoup  # For scraping Coinbase
 
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
 def get_rate():
-    # 1. Try to fetch from Coinbase
+    # 1. Try to fetch from Coinbase (scraping)
     try:
         url = "https://www.coinbase.com/en-in/price/pi"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, "html.parser")
-            # Find the correct price div by inspecting the page structure
-            # Coinbase may change this structure; update selector if needed
-            # Look for the <div> containing the INR price
-            price_element = soup.find("div", {"class": re.compile(r"^TextElement__Spacer.*")})
+            # Find INR price by pattern
+            price_element = soup.find("div", string=re.compile(r"^₹[\d,]+\.\d{2}$"))
             if price_element:
-                # Extract price text, remove rupee sign and commas
                 price_text = price_element.text.strip().replace("₹", "").replace(",", "")
-                # Handle cases like "NA" or empty
-                try:
-                    price = float(price_text)
-                    if price > 0:
-                        return price
-                except Exception:
-                    pass
+                price = float(price_text)
+                if price > 0:
+                    return price
+            # Fallback: try any element matching the rupee pattern
+            candidate = soup.find(string=re.compile(r"^₹[\d,]+\.\d{2}$"))
+            if candidate:
+                price_text = candidate.strip().replace("₹", "").replace(",", "")
+                price = float(price_text)
+                if price > 0:
+                    return price
     except Exception:
         pass
 
@@ -47,7 +47,7 @@ def get_rate():
     except Exception:
         pass
 
-    # 3. If both fail, return None (do NOT return 100)
+    # 3. If both fail, return None (NO default)
     return None
 
 # Helper to send timer update
@@ -235,7 +235,7 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
-            f"🧾 *New Pi Sell Request*\n\n"
+            f"🧾 *New Pi Sell Request @{rate}*\n\n"
             f"👤 *Full Name:* `{context.user_data['full_name']}`\n"
             f"🆔 *PAN:* `{context.user_data['pan']}`\n"
             f"📱 *Phone:* `{context.user_data['phone']}`\n"
