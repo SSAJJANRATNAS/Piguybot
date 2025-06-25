@@ -7,18 +7,48 @@ from telegram.ext import (
 import asyncio
 import re
 import requests
+from bs4 import BeautifulSoup  # NEW: For Coinbase scraping
 
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
 def get_rate():
+    # 1. Try to fetch from Coinbase
+    try:
+        url = "https://www.coinbase.com/en-in/price/pi"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            # Find the correct price div by inspecting the page structure
+            # Coinbase may change this structure; update selector if needed
+            # Look for the <div> containing the INR price
+            price_element = soup.find("div", {"class": re.compile(r"^TextElement__Spacer.*")})
+            if price_element:
+                # Extract price text, remove rupee sign and commas
+                price_text = price_element.text.strip().replace("₹", "").replace(",", "")
+                # Handle cases like "NA" or empty
+                try:
+                    price = float(price_text)
+                    if price > 0:
+                        return price
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # 2. Try CoinGecko as fallback
     try:
         url = "https://api.coingecko.com/api/v3/simple/price?ids=pi-network&vs_currencies=inr"
         response = requests.get(url, timeout=10)
         data = response.json()
-        return data["pi-network"]["inr"]
+        rate = data["pi-network"]["inr"]
+        if rate and rate > 0:
+            return rate
     except Exception:
-        return 100
+        pass
+
+    # 3. If both fail, return None (do NOT return 100)
+    return None
 
 # Helper to send timer update
 async def send_timer_update(context: ContextTypes.DEFAULT_TYPE, chat_id, remaining):
@@ -42,8 +72,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     rate = get_rate()
+    if rate is None:
+        rate_text = "Rate unavailable"
+    else:
+        rate_text = f"₹{rate}/PI"
     await update.message.reply_text(
-        f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: ₹{rate}/PI\n\nHow many PI would you like to sell?\n\n⏳ You have 5 minutes to complete this process."
+        f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: {rate_text}\n\nHow many PI would you like to sell?\n\n⏳ You have 5 minutes to complete this process."
     )
 
     # Start a countdown timer task
@@ -71,7 +105,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     if query.data == "rate_show":
-        await query.edit_message_text(f"💰 Current Pi Rate: ₹{get_rate()}/PI")
+        rate = get_rate()
+        if rate is None:
+            rate_text = "Rate unavailable"
+        else:
+            rate_text = f"₹{rate}/PI"
+        await query.edit_message_text(f"💰 Current Pi Rate: {rate_text}")
     elif query.data == "rate_set":
         await query.edit_message_text("✏️ Please send the new rate:")
         context.user_data["awaiting_rate"] = True
@@ -82,7 +121,9 @@ async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             new_rate = int(update.message.text.strip())
             with open("rate.txt", "w") as f:
                 f.write(str(new_rate))
-            await update.message.reply_text(f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from CoinGecko!)")
+            await update.message.reply_text(
+                f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from Coinbase/CoinGecko!)"
+            )
         except Exception:
             await update.message.reply_text("⚠️ Please send a valid number.")
         context.user_data["awaiting_rate"] = False
@@ -98,6 +139,9 @@ async def pi_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         pi = float(update.message.text.strip())
         rate = get_rate()
+        if rate is None:
+            await update.message.reply_text("⚠️ Rate unavailable. Please try again later.")
+            return ConversationHandler.END
         context.user_data['pi'] = pi
         context.user_data['gross'] = pi * rate
         return FULL_NAME
@@ -179,6 +223,9 @@ async def get_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     pi = context.user_data['pi']
     rate = get_rate()
+    if rate is None:
+        await update.message.reply_text("⚠️ Rate unavailable. Please try again later.")
+        return ConversationHandler.END
     gross = pi * rate
     tax = gross * 0.30
     processing = gross * 0.01
