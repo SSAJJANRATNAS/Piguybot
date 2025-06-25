@@ -1,4 +1,5 @@
 import os
+import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -12,33 +13,43 @@ from bs4 import BeautifulSoup
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
+# --- RATE CACHE ---
+RATE_CACHE = {
+    "value": None,
+    "timestamp": 0  # Unix epoch seconds
+}
+CACHE_DURATION = 30 * 60  # 30 minutes in seconds
+
 def get_rate():
-    # 1. Get PI price in USD from MEXC
+    now = time.time()
+    # Use cache if not expired
+    if RATE_CACHE["value"] is not None and (now - RATE_CACHE["timestamp"] < CACHE_DURATION):
+        return RATE_CACHE["value"]
+
+    # MEXC USD price scrape
     try:
         url = "https://www.mexc.co/en-IN/price/PI"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, "html.parser")
-            # MEXC USD price is in <span class="price"> (example: $37.12)
             price_element = soup.find("span", {"class": "price"})
             if price_element:
-                price_text = price_element.text.strip()
-                price_text = price_text.replace("$", "").replace(",", "")
+                price_text = price_element.text.strip().replace("$", "").replace(",", "")
                 pi_usd = float(price_text)
                 if pi_usd > 0:
-                    # 2. Get USD-INR conversion rate
-                    try:
-                        fx = requests.get("https://api.exchangerate.host/latest?base=USD&symbols=INR", timeout=10)
-                        fx_json = fx.json()
-                        usd_inr = fx_json["rates"]["INR"]
-                        if usd_inr > 0:
-                            pi_inr = pi_usd * usd_inr
-                            return round(pi_inr, 2)
-                    except Exception:
-                        return None
+                    # USD to INR
+                    fx = requests.get("https://api.exchangerate.host/latest?base=USD&symbols=INR", timeout=10)
+                    fx_json = fx.json()
+                    usd_inr = fx_json["rates"]["INR"]
+                    if usd_inr > 0:
+                        pi_inr = round(pi_usd * usd_inr, 2)
+                        # Update cache
+                        RATE_CACHE["value"] = pi_inr
+                        RATE_CACHE["timestamp"] = now
+                        return pi_inr
     except Exception as e:
-        print("Error fetching price from MEXC:", e)
-    return None
+        print("Error fetching PI rate:", e)
+    return RATE_CACHE["value"]  # Return last cached value even on error
 
 # Helper to send timer update
 async def send_timer_update(context: ContextTypes.DEFAULT_TYPE, chat_id, remaining):
@@ -108,10 +119,11 @@ async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("awaiting_rate") and update.effective_user.id == ADMIN_ID:
         try:
             new_rate = int(update.message.text.strip())
-            with open("rate.txt", "w") as f:
-                f.write(str(new_rate))
+            # Manual override: update cache and timestamp
+            RATE_CACHE["value"] = new_rate
+            RATE_CACHE["timestamp"] = time.time()
             await update.message.reply_text(
-                f"✅ Rate updated to ₹{new_rate}/PI (Note: Now bot fetches live rate from MEXC only!)"
+                f"✅ Rate updated to ₹{new_rate}/PI (Manual override, will refresh after 30 minutes or on next bot restart.)"
             )
         except Exception:
             await update.message.reply_text("⚠️ Please send a valid number.")
