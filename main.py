@@ -257,3 +257,7 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_new_rate))
 
 if __name__ == "__main__":
     asyncio.run(app.run_polling())
+if __name__ == "__main__":
+    import asyncio
+    print("🤖 Bot is starting...")
+    asyncio.run(app.run_polling())
