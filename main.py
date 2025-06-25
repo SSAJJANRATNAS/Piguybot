@@ -7,51 +7,23 @@ from telegram.ext import (
 )
 import asyncio
 import re
-import requests
-from bs4 import BeautifulSoup
 
 PI_AMOUNT, FULL_NAME, PHONE, PAN, WALLET, TXN_LINK, UPI = range(7)
 ADMIN_ID = 5795065284
 
-# --- RATE CACHE ---
-RATE_CACHE = {
-    "value": None,
-    "timestamp": 0  # Unix epoch seconds
-}
-CACHE_DURATION = 30 * 60  # 30 minutes in seconds
+RATE_FILE = "rate.txt"
 
 def get_rate():
-    now = time.time()
-    # Use cache if not expired
-    if RATE_CACHE["value"] is not None and (now - RATE_CACHE["timestamp"] < CACHE_DURATION):
-        return RATE_CACHE["value"]
+    # Rate is stored in rate.txt (set by admin), always read the latest value
+    if os.path.exists(RATE_FILE):
+        try:
+            with open(RATE_FILE, "r") as f:
+                rate = float(f.read().strip())
+                return rate
+        except Exception:
+            return None
+    return None
 
-    # MEXC USD price scrape
-    try:
-        url = "https://www.mexc.co/en-IN/price/PI"
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, "html.parser")
-            price_element = soup.find("span", {"class": "price"})
-            if price_element:
-                price_text = price_element.text.strip().replace("$", "").replace(",", "")
-                pi_usd = float(price_text)
-                if pi_usd > 0:
-                    # USD to INR
-                    fx = requests.get("https://api.exchangerate.host/latest?base=USD&symbols=INR", timeout=10)
-                    fx_json = fx.json()
-                    usd_inr = fx_json["rates"]["INR"]
-                    if usd_inr > 0:
-                        pi_inr = round(pi_usd * usd_inr, 2)
-                        # Update cache
-                        RATE_CACHE["value"] = pi_inr
-                        RATE_CACHE["timestamp"] = now
-                        return pi_inr
-    except Exception as e:
-        print("Error fetching PI rate:", e)
-    return RATE_CACHE["value"]  # Return last cached value even on error
-
-# Helper to send timer update
 async def send_timer_update(context: ContextTypes.DEFAULT_TYPE, chat_id, remaining):
     mins, secs = divmod(remaining, 60)
     time_str = f"{mins}:{secs:02d} minutes left to complete the process."
@@ -81,14 +53,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👋 Welcome to Pi-Guy Bot!\nCurrent rate: {rate_text}\n\nHow many PI would you like to sell?\n\n⏳ You have 5 minutes to complete this process."
     )
 
-    # Start a countdown timer task
     chat_id = update.effective_chat.id
     context.user_data['timer_task'] = asyncio.create_task(timer_reminder(context, chat_id))
-
     return PI_AMOUNT
 
 async def timer_reminder(context: ContextTypes.DEFAULT_TYPE, chat_id):
-    # Sends timer reminders at 4, 3, 2, 1 min left
     intervals = [240, 180, 120, 60]  # seconds remaining
     start_time = asyncio.get_event_loop().time()
     for sec in intervals:
@@ -118,12 +87,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("awaiting_rate") and update.effective_user.id == ADMIN_ID:
         try:
-            new_rate = int(update.message.text.strip())
-            # Manual override: update cache and timestamp
-            RATE_CACHE["value"] = new_rate
-            RATE_CACHE["timestamp"] = time.time()
+            new_rate = float(update.message.text.strip())
+            with open(RATE_FILE, "w") as f:
+                f.write(str(new_rate))
             await update.message.reply_text(
-                f"✅ Rate updated to ₹{new_rate}/PI (Manual override, will refresh after 30 minutes or on next bot restart.)"
+                f"✅ Rate updated to ₹{new_rate}/PI (Saved in rate.txt. Only admin can update the rate.)"
             )
         except Exception:
             await update.message.reply_text("⚠️ Please send a valid number.")
@@ -134,7 +102,6 @@ async def catch_new_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def pi_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cancel_timer_task(context)
     await update.message.reply_text("🪪 Enter full name (as per govt. ID):")
-    # Restart timer for this step
     chat_id = update.effective_chat.id
     context.user_data['timer_task'] = asyncio.create_task(timer_reminder(context, chat_id))
     try:
