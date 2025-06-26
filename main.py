@@ -588,6 +588,85 @@ async def admin_action_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.message.reply_text(f"User notified for transaction `{txn_id}`.")
         pending_transactions.pop(txn_id, None)
 
+# --- P2P GROUP COMMANDS & FILTER ---
+
+P2P_COMMANDS = [r"^/buyp2p", r"^/sellp2p"]
+
+def is_valid_wallet_address(address: str) -> bool:
+    return bool(re.fullmatch(r"[A-Z2-7]{56}", address.strip()))
+
+def is_p2p_message(text: str) -> bool:
+    for pattern in P2P_COMMANDS:
+        if re.match(pattern, text, re.IGNORECASE):
+            return True
+    return False
+
+async def group_message_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.effective_message
+    if message and message.chat.type in ["group", "supergroup"]:
+        if not message.text or not is_p2p_message(message.text.strip()):
+            try:
+                await message.delete()
+            except Exception:
+                pass
+
+async def group_buyp2p(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type not in ["group", "supergroup"]:
+        return
+    args = context.args
+    if len(args) < 3:
+        await update.message.reply_text("Usage: /buyp2p <amount> <rate> <wallet_address>")
+        return
+    try:
+        amount = float(args[0])
+        rate = float(args[1])
+        wallet_address = args[2].strip()
+    except Exception:
+        await update.message.reply_text("Invalid format. Usage: /buyp2p <amount> <rate> <wallet_address>")
+        return
+    if not is_valid_wallet_address(wallet_address):
+        await update.message.reply_text("⚠️ Invalid wallet address. 56 chars, A-Z 2-7 only.")
+        return
+    qr_payload = f"P2P_BUY|amount={amount}|rate={rate}|wallet={wallet_address}"
+    qr_img = qrcode.make(qr_payload)
+    bio = BytesIO()
+    bio.name = "p2p_buy_qr.png"
+    qr_img.save(bio, "PNG")
+    bio.seek(0)
+    await update.message.reply_text(
+        f"✅ P2P Buy Offer!\nAmount: {amount}\nRate: {rate}\nWallet: {wallet_address}\nQR attached below."
+    )
+    await update.message.reply_photo(photo=bio)
+
+async def group_sellp2p(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type not in ["group", "supergroup"]:
+        return
+    args = context.args
+    if len(args) < 3:
+        await update.message.reply_text("Usage: /sellp2p <amount> <rate> <wallet_address>")
+        return
+    try:
+        amount = float(args[0])
+        rate = float(args[1])
+        wallet_address = args[2].strip()
+    except Exception:
+        await update.message.reply_text("Invalid format. Usage: /sellp2p <amount> <rate> <wallet_address>")
+        return
+    if not is_valid_wallet_address(wallet_address):
+        await update.message.reply_text("⚠️ Invalid wallet address. 56 chars, A-Z 2-7 only.")
+        return
+    qr_payload = f"P2P_SELL|amount={amount}|rate={rate}|wallet={wallet_address}"
+    qr_img = qrcode.make(qr_payload)
+    bio = BytesIO()
+    bio.name = "p2p_sell_qr.png"
+    qr_img.save(bio, "PNG")
+    bio.seek(0)
+    await update.message.reply_text(
+        f"✅ P2P Sell Offer!\nAmount: {amount}\nRate: {rate}\nWallet: {wallet_address}\nQR attached below."
+    )
+    await update.message.reply_photo(photo=bio)
+
+# --- Main function ---
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
@@ -628,97 +707,14 @@ def main():
         filters.TEXT & filters.ChatType.PRIVATE & ~filters.Regex(re.compile(r"^T\d{14,}|^upi|^payment|screenshot", re.I)),
         seller_transfer_proof
     ))
+
+    # --- P2P Group Handlers (add here, before run_polling) ---
+    app.add_handler(CommandHandler("buyp2p", group_buyp2p))
+    app.add_handler(CommandHandler("sellp2p", group_sellp2p))
+    app.add_handler(MessageHandler(filters.ALL, group_message_filter), group=0)
+
     print("🤖 Bot is starting...")
     asyncio.run(app.run_polling())
 
 if __name__ == "__main__":
     main()
-# --- P2P GROUP COMMANDS & FILTER (add these at the end of your main.py) ---
-
-import qrcode
-from io import BytesIO
-
-P2P_COMMANDS = [r"^/buyp2p", r"^/sellp2p"]
-
-def is_valid_wallet_address(address: str) -> bool:
-    return bool(re.fullmatch(r"[A-Z2-7]{56}", address.strip()))
-
-def is_p2p_message(text: str) -> bool:
-    for pattern in P2P_COMMANDS:
-        if re.match(pattern, text, re.IGNORECASE):
-            return True
-    return False
-
-async def group_message_filter(update, context):
-    message = update.effective_message
-    if message and message.chat.type in ["group", "supergroup"]:
-        if not message.text or not is_p2p_message(message.text.strip()):
-            try:
-                await message.delete()
-            except Exception:
-                pass
-
-async def group_buyp2p(update, context):
-    if update.effective_chat.type not in ["group", "supergroup"]:
-        return
-    args = context.args
-    if len(args) < 3:
-        await update.message.reply_text("Usage: /buyp2p <amount> <rate> <wallet_address>")
-        return
-    try:
-        amount = float(args[0])
-        rate = float(args[1])
-        wallet_address = args[2].strip()
-    except Exception:
-        await update.message.reply_text("Invalid format. Usage: /buyp2p <amount> <rate> <wallet_address>")
-        return
-    if not is_valid_wallet_address(wallet_address):
-        await update.message.reply_text("⚠️ Invalid wallet address. 56 chars, A-Z 2-7 only.")
-        return
-    qr_payload = f"P2P_BUY|amount={amount}|rate={rate}|wallet={wallet_address}"
-    qr_img = qrcode.make(qr_payload)
-    bio = BytesIO()
-    bio.name = "p2p_buy_qr.png"
-    qr_img.save(bio, "PNG")
-    bio.seek(0)
-    await update.message.reply_text(
-        f"✅ P2P Buy Offer!\nAmount: {amount}\nRate: {rate}\nWallet: {wallet_address}\nQR attached below."
-    )
-    await update.message.reply_photo(photo=bio)
-
-async def group_sellp2p(update, context):
-    if update.effective_chat.type not in ["group", "supergroup"]:
-        return
-    args = context.args
-    if len(args) < 3:
-        await update.message.reply_text("Usage: /sellp2p <amount> <rate> <wallet_address>")
-        return
-    try:
-        amount = float(args[0])
-        rate = float(args[1])
-        wallet_address = args[2].strip()
-    except Exception:
-        await update.message.reply_text("Invalid format. Usage: /sellp2p <amount> <rate> <wallet_address>")
-        return
-    if not is_valid_wallet_address(wallet_address):
-        await update.message.reply_text("⚠️ Invalid wallet address. 56 chars, A-Z 2-7 only.")
-        return
-    qr_payload = f"P2P_SELL|amount={amount}|rate={rate}|wallet={wallet_address}"
-    qr_img = qrcode.make(qr_payload)
-    bio = BytesIO()
-    bio.name = "p2p_sell_qr.png"
-    qr_img.save(bio, "PNG")
-    bio.seek(0)
-    await update.message.reply_text(
-        f"✅ P2P Sell Offer!\nAmount: {amount}\nRate: {rate}\nWallet: {wallet_address}\nQR attached below."
-    )
-    await update.message.reply_photo(photo=bio)
-
-# --- Add these handlers at the end of your main() just before app.run_polling() ---
-# (You will likely already have 'app' defined above)
-
-    app.add_handler(CommandHandler("buyp2p", group_buyp2p))
-    app.add_handler(CommandHandler("sellp2p", group_sellp2p))
-    app.add_handler(MessageHandler(filters.ALL, group_message_filter), group=0)
-
-# (No need to change anything else in your file, just add these at the bottom.)
