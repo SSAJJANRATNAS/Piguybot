@@ -117,6 +117,21 @@ async def sell_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     net = gross * 0.68
     pending_transactions[txn_id] = context.user_data
     await update.message.reply_text(f"✅ Request submitted! Transaction ID: `{txn_id}`\nGross: ₹{gross:.2f}, Net: ₹{net:.2f}", parse_mode="Markdown")
+
+# Send details to admin
+msg = (
+    f"📥 New Sell Request:\n"
+    f"👤 Name: {context.user_data['sell_name']}\n"
+    f"📱 Phone: {context.user_data['sell_phone']}\n"
+    f"🪪 PAN: {context.user_data['sell_pan']}\n"
+    f"🔗 Txn Link: {context.user_data['sell_pi_txn']}\n"
+    f"💳 UPI/Paytm: {context.user_data['sell_upi']}\n"
+    f"💰 Amount: {pi} Pi\n"
+    f"💸 Gross: ₹{gross:.2f}\n"
+    f"✅ Net: ₹{net:.2f}\n"
+    f"🆔 Transaction ID: `{txn_id}`"
+)
+await context.bot.send_message(chat_id=ADMIN_ID, text=msg, parse_mode="Markdown")
     return ConversationHandler.END
 
 def main():
