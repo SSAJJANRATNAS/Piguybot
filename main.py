@@ -5,7 +5,10 @@ import time
 import random
 import string
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, ConversationHandler
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler, filters,
+    ContextTypes, CallbackQueryHandler, ConversationHandler
+)
 
 ADMIN_ID = 5795065284
 RATE_FILE = "rate.txt"
@@ -32,7 +35,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         sell_rate = get_sell_rate()
         keyboard = [[InlineKeyboardButton("Sell Pi", callback_data="sell_pi")]]
-        await update.message.reply_text(f"👋 Welcome!\n💸 Sell Pi Rate: ₹{sell_rate if sell_rate else '--'}", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(
+            f"👋 Welcome!\n💸 Sell Pi Rate: ₹{sell_rate if sell_rate else '--'}",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 async def set_rate_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -95,7 +101,10 @@ async def sell_pan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['sell_pan'] = pan
 
     wallet_address = "GAP6UFB27DCORJA7LTGCCVVM2CD5VJJIHDRS34PIYUZNN663IDAEGNPL"
-    await update.message.reply_text(f"✅ Send your Pi now to this wallet:\n`{wallet_address}`", parse_mode="Markdown")
+    await update.message.reply_text(
+        f"✅ Send your Pi now to this wallet:\n`{wallet_address}`",
+        parse_mode="Markdown"
+    )
     await update.message.reply_text("🔗 After sending, paste your Pi transaction link:")
     return SELL_PI_TXN
 
@@ -116,22 +125,27 @@ async def sell_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     gross = pi * sell_rate
     net = gross * 0.68
     pending_transactions[txn_id] = context.user_data
-    await update.message.reply_text(f"✅ Request submitted! Transaction ID: `{txn_id}`\nGross: ₹{gross:.2f}, Net: ₹{net:.2f}", parse_mode="Markdown")
 
-# Send details to admin
-msg = (
-    f"📥 New Sell Request:\n"
-    f"👤 Name: {context.user_data['sell_name']}\n"
-    f"📱 Phone: {context.user_data['sell_phone']}\n"
-    f"🪪 PAN: {context.user_data['sell_pan']}\n"
-    f"🔗 Txn Link: {context.user_data['sell_pi_txn']}\n"
-    f"💳 UPI/Paytm: {context.user_data['sell_upi']}\n"
-    f"💰 Amount: {pi} Pi\n"
-    f"💸 Gross: ₹{gross:.2f}\n"
-    f"✅ Net: ₹{net:.2f}\n"
-    f"🆔 Transaction ID: `{txn_id}`"
-)
-await context.bot.send_message(chat_id=ADMIN_ID, text=msg, parse_mode="Markdown")
+    # Notify user
+    await update.message.reply_text(
+        f"✅ Request submitted! Transaction ID: `{txn_id}`\nGross: ₹{gross:.2f}, Net: ₹{net:.2f}",
+        parse_mode="Markdown"
+    )
+
+    # Notify admin
+    msg = (
+        f"📥 *New Sell Request*\n"
+        f"👤 Name: {context.user_data['sell_name']}\n"
+        f"📱 Phone: {context.user_data['sell_phone']}\n"
+        f"🪪 PAN: {context.user_data['sell_pan']}\n"
+        f"🔗 Txn Link: {context.user_data['sell_pi_txn']}\n"
+        f"💳 UPI/Paytm: {context.user_data['sell_upi']}\n"
+        f"💰 Amount: {pi} Pi\n"
+        f"💸 Gross: ₹{gross:.2f}\n"
+        f"✅ Net: ₹{net:.2f}\n"
+        f"🆔 Transaction ID: `{txn_id}`"
+    )
+    await context.bot.send_message(chat_id=ADMIN_ID, text=msg, parse_mode="Markdown")
     return ConversationHandler.END
 
 def main():
@@ -139,7 +153,11 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler("start", start), CallbackQueryHandler(option_choice_handler, pattern="^sell_pi$"), CallbackQueryHandler(set_rate_callback, pattern="^set_rate$")],
+        entry_points=[
+            CommandHandler("start", start),
+            CallbackQueryHandler(option_choice_handler, pattern="^sell_pi$"),
+            CallbackQueryHandler(set_rate_callback, pattern="^set_rate$")
+        ],
         states={
             SELL_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, sell_amount)],
             SELL_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, sell_name)],
